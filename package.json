@@ -1,11 +1,11 @@
 {
   "name": "alexa-medicamentos-server",
   "version": "2.0.0",
-  "description": "Servidor para skill de Alexa de inventario de medicamentos",
+  "description": "Servidor para skill de inventario de medicamentos",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "test": "jest"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
     "ask-sdk-core": "^2.12.1",
@@ -13,8 +13,5 @@
     "axios": "^1.6.7",
     "dotenv": "^16.3.1",
     "express": "^4.18.2"
-  },
-  "devDependencies": {
-    "jest": "^29.7.0"
   }
 }
