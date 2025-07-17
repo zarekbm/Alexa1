@@ -23,17 +23,17 @@ async function consultarAppscript(payload) {
     }
 }
 
-// Handlers de intents
+// Handlers de actions
 const ConsultarMedicamentoHandler = {
     canHandle(handlerInput) {
-        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
-            && Alexa.getIntentName(handlerInput.requestEnvelope) === 'ConsultarMedicamento';
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'ActionRequest'
+            && Alexa.getActionName(handlerInput.requestEnvelope) === 'ConsultarMedicamento';
     },
     async handle(handlerInput) {
-        const medicamento = handlerInput.requestEnvelope.request.intent.slots.medicamento.value;
+        const medicamento = handlerInput.requestEnvelope.request.action.slots.medicamento.value;
         // Llama a Appscript
         const resultado = await consultarAppscript({
-            intent: "ConsultarMedicamento",
+            action: "ConsultarMedicamento",
             medicamento
         });
         const mensaje = resultado?.respuesta || `No pude encontrar información para ${medicamento}.`;
@@ -45,14 +45,14 @@ const ConsultarMedicamentoHandler = {
 
 const RegistrarTomaHandler = {
     canHandle(handlerInput) {
-        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
-            && Alexa.getIntentName(handlerInput.requestEnvelope) === 'RegistrarToma';
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'ActionRequest'
+            && Alexa.getActionName(handlerInput.requestEnvelope) === 'RegistrarToma';
     },
     async handle(handlerInput) {
-        const medicamento = handlerInput.requestEnvelope.request.intent.slots.medicamento.value;
+        const medicamento = handlerInput.requestEnvelope.request.action.slots.medicamento.value;
         // Llama a Appscript
         const resultado = await consultarAppscript({
-            intent: "RegistrarToma",
+            action: "RegistrarToma",
             medicamento
         });
         const mensaje = resultado?.respuesta || `He registrado la toma de ${medicamento}. ¿Cuántas unidades tomaste?`;
@@ -65,14 +65,14 @@ const RegistrarTomaHandler = {
 
 const ConfirmarCantidadHandler = {
     canHandle(handlerInput) {
-        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
-            && Alexa.getIntentName(handlerInput.requestEnvelope) === 'ConfirmarCantidad';
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'ActionRequest'
+            && Alexa.getActionName(handlerInput.requestEnvelope) === 'ConfirmarCantidad';
     },
     async handle(handlerInput) {
-        const cantidad = handlerInput.requestEnvelope.request.intent.slots.cantidad.value;
+        const cantidad = handlerInput.requestEnvelope.request.action.slots.cantidad.value;
         // Llama a Appscript
         const resultado = await consultarAppscript({
-            intent: "ConfirmarCantidad",
+            action: "ConfirmarCantidad",
             cantidad
         });
         const mensaje = resultado?.respuesta || `He registrado ${cantidad} unidades.`;
@@ -84,13 +84,13 @@ const ConfirmarCantidadHandler = {
 
 const ConsultarAlertasHandler = {
     canHandle(handlerInput) {
-        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
-            && Alexa.getIntentName(handlerInput.requestEnvelope) === 'ConsultarAlertas';
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'ActionRequest'
+            && Alexa.getActionName(handlerInput.requestEnvelope) === 'ConsultarAlertas';
     },
     async handle(handlerInput) {
         // Llama a Appscript
         const resultado = await consultarAppscript({
-            intent: "ConsultarAlertas"
+            action: "ConsultarAlertas"
         });
         const mensaje = resultado?.respuesta || "No hay alertas por el momento.";
         return handlerInput.responseBuilder
@@ -99,10 +99,10 @@ const ConsultarAlertasHandler = {
     }
 };
 
-const HelpIntentHandler = {
+const HelpActionHandler = {
     canHandle(handlerInput) {
-        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
-            && Alexa.getIntentName(handlerInput.requestEnvelope) === 'AMAZON.HelpIntent';
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'ActionRequest'
+            && Alexa.getActionName(handlerInput.requestEnvelope) === 'AMAZON.HelpAction';
     },
     handle(handlerInput) {
         const mensaje = "Puedes preguntarme por el inventario o registrar que tomaste un medicamento.";
@@ -112,12 +112,12 @@ const HelpIntentHandler = {
     }
 };
 
-const CancelAndStopIntentHandler = {
+const CancelAndStopActionHandler = {
     canHandle(handlerInput) {
-        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'ActionRequest'
             && (
-                Alexa.getIntentName(handlerInput.requestEnvelope) === 'AMAZON.CancelIntent'
-                || Alexa.getIntentName(handlerInput.requestEnvelope) === 'AMAZON.StopIntent'
+                Alexa.getActionName(handlerInput.requestEnvelope) === 'AMAZON.CancelAction'
+                || Alexa.getActionName(handlerInput.requestEnvelope) === 'AMAZON.StopAction'
             );
     },
     handle(handlerInput) {
@@ -130,7 +130,7 @@ const CancelAndStopIntentHandler = {
 
 const FallbackHandler = {
     canHandle(handlerInput) {
-        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest';
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'ActionRequest';
     },
     handle(handlerInput) {
         const mensaje = "Perdón, no entendí eso. ¿Puedes repetirlo?";
@@ -147,8 +147,8 @@ const skillBuilder = Alexa.SkillBuilders.custom()
         RegistrarTomaHandler,
         ConfirmarCantidadHandler,
         ConsultarAlertasHandler,
-        HelpIntentHandler,
-        CancelAndStopIntentHandler,
+        HelpActionHandler,
+        CancelAndStopActionHandler,
         FallbackHandler
     );
 
