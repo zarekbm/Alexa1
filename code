@@ -1,5 +1,1 @@
-.
-├── package.json
-├── index.js
-├── .env.example
-├── README.md
+APPSCRIPT_URL=https://script.google.com/macros/s/AKfycbznGAcPL7DaiDPa31Y2t6rSA21O_zWu-pKJ9iRtZrz4fSqmBts2c9mL8ZV6Y6wS04EU7Q/exec
