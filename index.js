@@ -1,175 +1,163 @@
-{
-    "interactionModel": {
-        "languageModel": {
-            "invocationName": "inventario medicamentos",
-            "intents": [
-                {
-                    "name": "ConsultarMedicamento",
-                    "slots": [
-                        {
-                            "name": "medicamento",
-                            "type": "AMAZON.SearchQuery"
-                        }
-                    ],
-                    "samples": [
-                        "consultar {medicamento}",
-                        "cuánto tengo de {medicamento}",
-                        "ver stock de {medicamento}",
-                        "revisar {medicamento}",
-                        "dónde está {medicamento}",
-                        "qué cantidad hay de {medicamento}",
-                        "información de {medicamento}",
-                        "estado de {medicamento}"
-                    ]
-                },
-                {
-                    "name": "RegistrarToma",
-                    "slots": [
-                        {
-                            "name": "medicamento",
-                            "type": "AMAZON.SearchQuery"
-                        }
-                    ],
-                    "samples": [
-                        "tomé {medicamento}",
-                        "consumí {medicamento}",
-                        "registrar toma de {medicamento}",
-                        "usé {medicamento}",
-                        "voy a tomar {medicamento}"
-                    ]
-                },
-                {
-                    "name": "ConfirmarCantidad",
-                    "slots": [
-                        {
-                            "name": "cantidad",
-                            "type": "AMAZON.NUMBER"
-                        }
-                    ],
-                    "samples": [
-                        "fueron {cantidad}",
-                        "cantidad {cantidad}",
-                        "tome {cantidad}",
-                        "{cantidad} unidades",
-                        "solo {cantidad}"
-                    ]
-                },
-                {
-                    "name": "ConsultarAlertas",
-                    "slots": [],
-                    "samples": [
-                        "revisar alertas",
-                        "qué medicamentos están por vencer",
-                        "hay medicamentos vencidos",
-                        "necesito comprar algo",
-                        "qué medicamentos faltan",
-                        "medicamentos con stock bajo",
-                        "ver vencimientos"
-                    ]
-                },
-                {
-                    "name": "AMAZON.HelpIntent",
-                    "samples": []
-                },
-                {
-                    "name": "AMAZON.StopIntent",
-                    "samples": []
-                },
-                {
-                    "name": "AMAZON.CancelIntent",
-                    "samples": []
-                },
-                {
-                    "name": "AMAZON.NavigateHomeIntent",
-                    "samples": []
-                }
-            ],
-            "types": []
-        },
-        "dialog": {
-            "intents": [
-                {
-                    "name": "RegistrarToma",
-                    "delegationStrategy": "ALWAYS",
-                    "confirmationRequired": false,
-                    "prompts": {},
-                    "slots": [
-                        {
-                            "name": "medicamento",
-                            "type": "AMAZON.SearchQuery",
-                            "confirmationRequired": false,
-                            "elicitationRequired": true,
-                            "prompts": {
-                                "elicitation": "Elicit.RegistrarToma.medicamento"
-                            }
-                        }
-                    ]
-                },
-                {
-                    "name": "ConfirmarCantidad",
-                    "delegationStrategy": "ALWAYS",
-                    "confirmationRequired": false,
-                    "prompts": {},
-                    "slots": [
-                        {
-                            "name": "cantidad",
-                            "type": "AMAZON.NUMBER",
-                            "confirmationRequired": false,
-                            "elicitationRequired": true,
-                            "prompts": {
-                                "elicitation": "Elicit.ConfirmarCantidad.cantidad"
-                            }
-                        }
-                    ]
-                }
-            ],
-            "delegationStrategy": "SKILL_RESPONSE"
-        },
-        "prompts": [
-            {
-                "id": "Elicit.RegistrarToma.medicamento",
-                "variations": [
-                    {
-                        "type": "PlainText",
-                        "value": "¿Qué medicamento tomaste?"
-                    },
-                    {
-                        "type": "PlainText",
-                        "value": "Dime el nombre del medicamento que consumiste"
-                    }
-                ]
-            },
-            {
-                "id": "Elicit.ConfirmarCantidad.cantidad",
-                "variations": [
-                    {
-                        "type": "PlainText",
-                        "value": "¿Cuántas unidades tomaste?"
-                    },
-                    {
-                        "type": "PlainText",
-                        "value": "Dime la cantidad que consumiste"
-                    }
-                ]
-            },
-            {
-                "id": "Confirm.RegistrarToma.medicamento",
-                "variations": [
-                    {
-                        "type": "PlainText",
-                        "value": "Voy a registrar que tomaste {medicamento}. ¿Es correcto?"
-                    }
-                ]
-            },
-            {
-                "id": "Confirm.ConfirmarCantidad.cantidad",
-                "variations": [
-                    {
-                        "type": "PlainText",
-                        "value": "Voy a registrar {cantidad} unidades. ¿Confirmas?"
-                    }
-                ]
-            }
-        ]
+require('dotenv').config();
+const express = require('express');
+const { ExpressAdapter } = require('ask-sdk-express-adapter');
+const Alexa = require('ask-sdk-core');
+const axios = require('axios');
+
+const app = express();
+app.use(express.json());
+
+// URL de tu AppScript (colócala en tu .env como APPSCRIPT_URL)
+const APPSCRIPT_URL = process.env.APPSCRIPT_URL;
+
+// Función helper para consultar tu AppScript
+async function consultarAppscript(payload) {
+    try {
+        const response = await axios.post(APPSCRIPT_URL, payload, {
+            headers: { 'Content-Type': 'application/json' }
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Error al conectar con AppScript:", error.message);
+        return null;
     }
 }
+
+// Handlers de intents
+const ConsultarMedicamentoHandler = {
+    canHandle(handlerInput) {
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+            && Alexa.getIntentName(handlerInput.requestEnvelope) === 'ConsultarMedicamento';
+    },
+    async handle(handlerInput) {
+        const medicamento = handlerInput.requestEnvelope.request.intent.slots.medicamento.value;
+        // Llama a Appscript
+        const resultado = await consultarAppscript({
+            intent: "ConsultarMedicamento",
+            medicamento
+        });
+        const mensaje = resultado?.respuesta || `No pude encontrar información para ${medicamento}.`;
+        return handlerInput.responseBuilder
+            .speak(mensaje)
+            .getResponse();
+    }
+};
+
+const RegistrarTomaHandler = {
+    canHandle(handlerInput) {
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+            && Alexa.getIntentName(handlerInput.requestEnvelope) === 'RegistrarToma';
+    },
+    async handle(handlerInput) {
+        const medicamento = handlerInput.requestEnvelope.request.intent.slots.medicamento.value;
+        // Llama a Appscript
+        const resultado = await consultarAppscript({
+            intent: "RegistrarToma",
+            medicamento
+        });
+        const mensaje = resultado?.respuesta || `He registrado la toma de ${medicamento}. ¿Cuántas unidades tomaste?`;
+        return handlerInput.responseBuilder
+            .speak(mensaje)
+            .addElicitSlotDirective('cantidad')
+            .getResponse();
+    }
+};
+
+const ConfirmarCantidadHandler = {
+    canHandle(handlerInput) {
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+            && Alexa.getIntentName(handlerInput.requestEnvelope) === 'ConfirmarCantidad';
+    },
+    async handle(handlerInput) {
+        const cantidad = handlerInput.requestEnvelope.request.intent.slots.cantidad.value;
+        // Llama a Appscript
+        const resultado = await consultarAppscript({
+            intent: "ConfirmarCantidad",
+            cantidad
+        });
+        const mensaje = resultado?.respuesta || `He registrado ${cantidad} unidades.`;
+        return handlerInput.responseBuilder
+            .speak(mensaje)
+            .getResponse();
+    }
+};
+
+const ConsultarAlertasHandler = {
+    canHandle(handlerInput) {
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+            && Alexa.getIntentName(handlerInput.requestEnvelope) === 'ConsultarAlertas';
+    },
+    async handle(handlerInput) {
+        // Llama a Appscript
+        const resultado = await consultarAppscript({
+            intent: "ConsultarAlertas"
+        });
+        const mensaje = resultado?.respuesta || "No hay alertas por el momento.";
+        return handlerInput.responseBuilder
+            .speak(mensaje)
+            .getResponse();
+    }
+};
+
+const HelpIntentHandler = {
+    canHandle(handlerInput) {
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+            && Alexa.getIntentName(handlerInput.requestEnvelope) === 'AMAZON.HelpIntent';
+    },
+    handle(handlerInput) {
+        const mensaje = "Puedes preguntarme por el inventario o registrar que tomaste un medicamento.";
+        return handlerInput.responseBuilder
+            .speak(mensaje)
+            .getResponse();
+    }
+};
+
+const CancelAndStopIntentHandler = {
+    canHandle(handlerInput) {
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+            && (
+                Alexa.getIntentName(handlerInput.requestEnvelope) === 'AMAZON.CancelIntent'
+                || Alexa.getIntentName(handlerInput.requestEnvelope) === 'AMAZON.StopIntent'
+            );
+    },
+    handle(handlerInput) {
+        const mensaje = "Hasta luego.";
+        return handlerInput.responseBuilder
+            .speak(mensaje)
+            .getResponse();
+    }
+};
+
+const FallbackHandler = {
+    canHandle(handlerInput) {
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest';
+    },
+    handle(handlerInput) {
+        const mensaje = "Perdón, no entendí eso. ¿Puedes repetirlo?";
+        return handlerInput.responseBuilder
+            .speak(mensaje)
+            .getResponse();
+    }
+};
+
+// Skill builder
+const skillBuilder = Alexa.SkillBuilders.custom()
+    .addRequestHandlers(
+        ConsultarMedicamentoHandler,
+        RegistrarTomaHandler,
+        ConfirmarCantidadHandler,
+        ConsultarAlertasHandler,
+        HelpIntentHandler,
+        CancelAndStopIntentHandler,
+        FallbackHandler
+    );
+
+// Adaptador para Express
+const adapter = new ExpressAdapter(skillBuilder.create(), false, false);
+
+app.post('/', adapter.getRequestHandlers());
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Servidor Alexa escuchando en puerto ${PORT}`);
+});
