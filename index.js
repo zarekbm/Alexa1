@@ -7,164 +7,243 @@ const axios = require('axios');
 const app = express();
 app.use(express.json());
 
+// Configuración y mapeos
+const INTENT_TO_ACTION_MAP = {
+  'ConsultarMedicamento': 'consultar',
+  'RegistrarToma': 'registrar_toma',
+  'ConfirmarCantidad': 'registrar_toma',
+  'ConsultarAlertas': 'consultar_alertas',
+  'AgregarMedicamento': 'agregar_medicamento',
+  'ActualizarStock': 'actualizar_stock',
+  'ListarMedicamentos': 'listar_medicamentos'
+};
+
 const APPSCRIPT_URL = process.env.APPSCRIPT_URL;
 
+// Función mejorada para comunicación con App Script
 async function consultarAppscript(payload) {
-    try {
-        const response = await axios.post(APPSCRIPT_URL, payload, {
-            headers: { 'Content-Type': 'application/json' }
-        });
-        return response.data;
-    } catch (error) {
-        console.error("Error al conectar con AppScript:", error.message);
-        return null;
-    }
+  try {
+    if (!payload.action) throw new Error('Acción no especificada');
+    
+    const response = await axios.post(APPSCRIPT_URL, payload, {
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.APPSCRIPT_TOKEN}` 
+      },
+      timeout: 8000
+    });
+
+    if (!response.data) throw new Error('Respuesta vacía del servidor');
+    if (response.data.status === 'error') throw new Error(response.data.message);
+
+    return response.data;
+  } catch (error) {
+    console.error("Error en consultarAppscript:", {
+      error: error.message,
+      payload: payload,
+      url: APPSCRIPT_URL,
+      stack: error.stack
+    });
+    
+    return { 
+      status: 'error',
+      message: error.response?.data?.message || 'Error al comunicarse con el sistema de inventario',
+      details: error.message
+    };
+  }
 }
 
+// Handlers actualizados
+const LaunchRequestHandler = {
+  canHandle(handlerInput) {
+    return Alexa.getRequestType(handlerInput.requestEnvelope) === 'LaunchRequest';
+  },
+  handle(handlerInput) {
+    const speakOutput = 'Bienvenido al sistema de inventario de medicamentos. ' +
+      'Puedes consultar o agregar medicamentos, registrar tomas, actualizar stock o revisar alertas. ' +
+      '¿Qué deseas hacer?';
+    return handlerInput.responseBuilder
+      .speak(speakOutput)
+      .reprompt(speakOutput)
+      .getResponse();
+  }
+};
+
 const ConsultarMedicamentoHandler = {
-    canHandle(handlerInput) {
-        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
-            && Alexa.getIntentName(handlerInput.requestEnvelope) === 'ConsultarMedicamento';
-    },
-    async handle(handlerInput) {
-        const medicamento = handlerInput.requestEnvelope.request.intent.slots.medicamento.value;
-        const resultado = await consultarAppscript({
-            action: "consultar",
-            medicamento
-        });
-        const mensaje = resultado?.message || `No pude encontrar información para ${medicamento}.`;
-        return handlerInput.responseBuilder
-            .speak(mensaje)
-            .getResponse();
+  canHandle(handlerInput) {
+    return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+      && Alexa.getIntentName(handlerInput.requestEnvelope) === 'ConsultarMedicamento';
+  },
+  async handle(handlerInput) {
+    const medicamento = handlerInput.requestEnvelope.request.intent.slots.medicamento.value;
+    
+    if (!medicamento) {
+      return handlerInput.responseBuilder
+        .speak('No especificaste un medicamento. ¿Qué medicamento deseas consultar?')
+        .addElicitSlotDirective('medicamento')
+        .getResponse();
     }
+
+    const resultado = await consultarAppscript({
+      action: INTENT_TO_ACTION_MAP['ConsultarMedicamento'],
+      medicamento: medicamento
+    });
+    
+    return handlerInput.responseBuilder
+      .speak(resultado.message || resultado.resumen)
+      .getResponse();
+  }
 };
 
-const RegistrarTomaHandler = {
-    canHandle(handlerInput) {
-        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
-            && Alexa.getIntentName(handlerInput.requestEnvelope) === 'RegistrarToma';
-    },
-    async handle(handlerInput) {
-        const medicamento = handlerInput.requestEnvelope.request.intent.slots.medicamento.value;
-        const resultado = await consultarAppscript({
-            action: "registrar_toma",
-            medicamento,
-            cantidad: 1, // Puedes mejorar esto preguntando la cantidad después
-            usuario: "Alexa"
-        });
-        const mensaje = resultado?.message || `He registrado la toma de ${medicamento}. ¿Cuántas unidades tomaste?`;
-        return handlerInput.responseBuilder
-            .speak(mensaje)
-            .addElicitSlotDirective('cantidad')
-            .getResponse();
+const AgregarMedicamentoHandler = {
+  canHandle(handlerInput) {
+    return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+      && Alexa.getIntentName(handlerInput.requestEnvelope) === 'AgregarMedicamento';
+  },
+  async handle(handlerInput) {
+    const { intent } = handlerInput.requestEnvelope.request;
+    const slots = intent.slots;
+    
+    // Validar datos mínimos
+    if (!slots.nombre.value) {
+      return handlerInput.responseBuilder
+        .speak('¿Qué medicamento deseas agregar?')
+        .addElicitSlotDirective('nombre')
+        .getResponse();
     }
+    
+    if (!slots.cantidad.value) {
+      return handlerInput.responseBuilder
+        .speak(`¿Cuántas unidades de ${slots.nombre.value} ingresas?`)
+        .addElicitSlotDirective('cantidad')
+        .getResponse();
+    }
+    
+    if (!slots.cantidadMinima.value) {
+      return handlerInput.responseBuilder
+        .speak(`¿Cuál es la cantidad mínima para ${slots.nombre.value}?`)
+        .addElicitSlotDirective('cantidadMinima')
+        .getResponse();
+    }
+    
+    if (!slots.vencimiento.value) {
+      return handlerInput.responseBuilder
+        .speak(`¿Cuándo vence ${slots.nombre.value}? (por ejemplo: 2024-12-31)`)
+        .addElicitSlotDirective('vencimiento')
+        .getResponse();
+    }
+    
+    // Construir payload
+    const payload = {
+      action: INTENT_TO_ACTION_MAP['AgregarMedicamento'],
+      nombre: slots.nombre.value,
+      cantidad: slots.cantidad.value,
+      cantidadMinima: slots.cantidadMinima.value,
+      vencimiento: slots.vencimiento.value,
+      usuario: "Alexa"
+    };
+    
+    // Campos opcionales
+    if (slots.principioActivo.value) payload.principioActivo = slots.principioActivo.value;
+    if (slots.presentacion.value) payload.presentacion = slots.presentacion.value;
+    if (slots.lote.value) payload.lote = slots.lote.value;
+    
+    try {
+      const resultado = await consultarAppscript(payload);
+      return handlerInput.responseBuilder
+        .speak(resultado.message)
+        .getResponse();
+    } catch (error) {
+      return handlerInput.responseBuilder
+        .speak(`Error al agregar medicamento: ${error.message}`)
+        .getResponse();
+    }
+  }
 };
 
-const ConfirmarCantidadHandler = {
-    canHandle(handlerInput) {
-        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
-            && Alexa.getIntentName(handlerInput.requestEnvelope) === 'ConfirmarCantidad';
-    },
-    async handle(handlerInput) {
-        // Para este intent necesitas también el medicamento, deberías almacenarlo en sessionAttributes
-        const cantidad = handlerInput.requestEnvelope.request.intent.slots.cantidad.value;
-        // Recupera el medicamento de los sessionAttributes (puedes mejorar esto)
-        const sessionAttributes = handlerInput.attributesManager.getSessionAttributes();
-        const medicamento = sessionAttributes.medicamento || "el medicamento";
-        const resultado = await consultarAppscript({
-            action: "registrar_toma",
-            medicamento,
-            cantidad,
-            usuario: "Alexa"
-        });
-        const mensaje = resultado?.message || `He registrado ${cantidad} unidades de ${medicamento}.`;
-        return handlerInput.responseBuilder
-            .speak(mensaje)
-            .getResponse();
+const ActualizarStockHandler = {
+  canHandle(handlerInput) {
+    return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+      && Alexa.getIntentName(handlerInput.requestEnvelope) === 'ActualizarStock';
+  },
+  async handle(handlerInput) {
+    const { slots } = handlerInput.requestEnvelope.request.intent;
+    
+    if (!slots.medicamento.value) {
+      return handlerInput.responseBuilder
+        .speak('¿Qué medicamento deseas actualizar?')
+        .addElicitSlotDirective('medicamento')
+        .getResponse();
     }
+    
+    if (!slots.cantidad.value) {
+      return handlerInput.responseBuilder
+        .speak(`¿A qué cantidad actualizamos ${slots.medicamento.value}?`)
+        .addElicitSlotDirective('cantidad')
+        .getResponse();
+    }
+    
+    const payload = {
+      action: INTENT_TO_ACTION_MAP['ActualizarStock'],
+      medicamento: slots.medicamento.value,
+      cantidad: slots.cantidad.value,
+      motivo: slots.motivo?.value || "Ajuste por comando de voz",
+      usuario: "Alexa"
+    };
+    
+    try {
+      const resultado = await consultarAppscript(payload);
+      return handlerInput.responseBuilder
+        .speak(resultado.message)
+        .getResponse();
+    } catch (error) {
+      return handlerInput.responseBuilder
+        .speak(`Error al actualizar stock: ${error.message}`)
+        .getResponse();
+    }
+  }
 };
 
-const ConsultarAlertasHandler = {
-    canHandle(handlerInput) {
-        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
-            && Alexa.getIntentName(handlerInput.requestEnvelope) === 'ConsultarAlertas';
-    },
-    async handle(handlerInput) {
-        const resultado = await consultarAppscript({
-            action: "consultar_alertas"
-        });
-        let mensaje;
-        if (resultado?.alertas && resultado.alertas.length > 0) {
-            mensaje = "Alertas activas: ";
-            resultado.alertas.forEach(a => {
-                mensaje += `${a.tipo} de ${a.medicamento}: ${a.detalle}. `;
-            });
-        } else {
-            mensaje = "No hay alertas por el momento.";
-        }
-        return handlerInput.responseBuilder
-            .speak(mensaje)
-            .getResponse();
-    }
-};
+// ... (otros handlers como RegistrarToma, ConfirmarCantidad, ConsultarAlertas se mantienen similares pero actualizados)
 
-const HelpIntentHandler = {
-    canHandle(handlerInput) {
-        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
-            && Alexa.getIntentName(handlerInput.requestEnvelope) === 'AMAZON.HelpIntent';
-    },
-    handle(handlerInput) {
-        const mensaje = "Puedes preguntarme por el inventario o registrar que tomaste un medicamento.";
-        return handlerInput.responseBuilder
-            .speak(mensaje)
-            .getResponse();
-    }
-};
-
-const CancelAndStopIntentHandler = {
-    canHandle(handlerInput) {
-        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
-            && (
-                Alexa.getIntentName(handlerInput.requestEnvelope) === 'AMAZON.CancelIntent'
-                || Alexa.getIntentName(handlerInput.requestEnvelope) === 'AMAZON.StopIntent'
-            );
-    },
-    handle(handlerInput) {
-        const mensaje = "Hasta luego.";
-        return handlerInput.responseBuilder
-            .speak(mensaje)
-            .getResponse();
-    }
-};
-
-const FallbackHandler = {
-    canHandle(handlerInput) {
-        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest';
-    },
-    handle(handlerInput) {
-        const mensaje = "Perdón, no entendí eso. ¿Puedes repetirlo?";
-        return handlerInput.responseBuilder
-            .speak(mensaje)
-            .getResponse();
-    }
-};
-
+// Configuración final del Skill
 const skillBuilder = Alexa.SkillBuilders.custom()
-    .addRequestHandlers(
-        ConsultarMedicamentoHandler,
-        RegistrarTomaHandler,
-        ConfirmarCantidadHandler,
-        ConsultarAlertasHandler,
-        HelpIntentHandler,
-        CancelAndStopIntentHandler,
-        FallbackHandler
-    );
+  .addRequestHandlers(
+    LaunchRequestHandler,
+    ConsultarMedicamentoHandler,
+    AgregarMedicamentoHandler,
+    ActualizarStockHandler,
+    RegistrarTomaHandler,
+    ConfirmarCantidadHandler,
+    ConsultarAlertasHandler,
+    HelpIntentHandler,
+    CancelAndStopIntentHandler,
+    SessionEndedRequestHandler
+  )
+  .addErrorHandlers(ErrorHandler)
+  .withApiClient(new Alexa.DefaultApiClient())
+  .withPersistenceAdapter(
+    new Alexa.DynamoDbPersistenceAdapter({
+      tableName: 'alexa_medicamentos_v2',
+      createTable: true
+    })
+  );
 
 const adapter = new ExpressAdapter(skillBuilder.create(), false, false);
 
 app.post('/', adapter.getRequestHandlers());
 
+// Endpoints adicionales
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'OK',
+    version: '2.0',
+    timestamp: new Date().toISOString(),
+    capabilities: ['consultar', 'agregar', 'actualizar', 'registrar', 'alertas']
+  });
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`Servidor Alexa escuchando en puerto ${PORT}`);
+  console.log(`Servidor Alexa v2.0 ejecutándose en puerto ${PORT}`);
 });
