@@ -1,0 +1,6 @@
+/alexa-medicamentos-server
+├── index.js         # Servidor principal
+├── package.json     # Dependencias
+├── .env             # Variables de entorno
+└── tests/           # Pruebas (opcional)
+    └── app.test.js
