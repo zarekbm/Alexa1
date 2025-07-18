@@ -35,11 +35,6 @@ app.post('/', (req, res) => {
   res.status(400).json({ error: "Solicitud no soportada" });
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Servidor escuchando en puerto ${PORT}`);
-});
-
 // Mapeo de intents a acciones
 const INTENT_HANDLERS = {
   'IniciarAgregarMedicamento': {
@@ -92,6 +87,13 @@ const INTENT_HANDLERS = {
     action: 'registrar_toma'
   }
 };
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Servidor escuchando en puerto ${PORT}`);
+});
+
+
 /*
 
 // Handler principal
