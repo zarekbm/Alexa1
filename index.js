@@ -12,32 +12,8 @@ app.use(express.json());
 // Configuración
 const APPSCRIPT_URL = process.env.APPSCRIPT_URL;
 
-
-app.post('/', (req, res) => {
-  const requestType = req.body.request.type;
-  
-  if (requestType === 'LaunchRequest') {
-    // Respuesta para "Alexa, abre mi botiquín"
-    const response = {
-      version: "1.0",
-      response: {
-        outputSpeech: {
-          type: "PlainText",
-          text: "Bienvenido a Mi Botiquín. ¿Qué necesitas?"
-        },
-        shouldEndSession: false
-      }
-    };
-    return res.json(response);
-  }
-
-  // Manejar otros tipos de solicitud
-  res.status(400).json({ error: "Solicitud no soportada" });
-});
-
-// Mapeo de intents a acciones
 const INTENT_HANDLERS = {
-  'IniciarAgregarMedicamento': {
+  'CapturarMedicamento': {
     prompt: '¿Qué medicamento deseas agregar?',
     nextIntent: 'CapturarNombreMedicamento'
   },
@@ -87,6 +63,30 @@ const INTENT_HANDLERS = {
     action: 'registrar_toma'
   }
 };
+
+app.post('/', (req, res) => {
+  const requestType = req.body.request.type;
+  
+  if (requestType === 'LaunchRequest') {
+    // Respuesta para "Alexa, abre mi botiquín"
+    const response = {
+      version: "1.0",
+      response: {
+        outputSpeech: {
+          type: "PlainText",
+          text: "Bienvenido a Mi Botiquín. ¿Qué necesitas?"
+        },
+        shouldEndSession: false
+      }
+    };
+    return res.json(response);
+  }
+
+  // Manejar otros tipos de solicitud
+  res.status(400).json({ error: "Solicitud no soportada" });
+});
+
+// Mapeo de intents a acciones
 
 // Handler principal
 const GestionInventarioHandler = {
@@ -140,7 +140,7 @@ async function callAppScript(payload) {
   });
   return response.data;
 }
-
+/*
 // Handlers básicos de Alexa
 const LaunchRequestHandler = {
   canHandle(handlerInput) {
@@ -186,7 +186,7 @@ const CancelAndStopIntentHandler = {
 const adapter = new ExpressAdapter(skillBuilder.create(), false, false);
 
 app.post('/', adapter.getRequestHandlers());
-
+*/
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Servidor escuchando en puerto ${PORT}`);
