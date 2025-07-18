@@ -1,4 +1,37 @@
-require('dotenv').config();
+const express = require('express');
+const bodyParser = require('body-parser');
+
+const app = express();
+app.use(bodyParser.json());
+
+app.post('/', (req, res) => {
+  const requestType = req.body.request.type;
+  
+  if (requestType === 'LaunchRequest') {
+    // Respuesta para "Alexa, abre mi botiquín"
+    const response = {
+      version: "1.0",
+      response: {
+        outputSpeech: {
+          type: "PlainText",
+          text: "Bienvenido a Mi Botiquín. ¿Qué necesitas?"
+        },
+        shouldEndSession: false
+      }
+    };
+    return res.json(response);
+  }
+
+  // Manejar otros tipos de solicitud
+  res.status(400).json({ error: "Solicitud no soportada" });
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Servidor escuchando en puerto ${PORT}`);
+});
+/*
+  require('dotenv').config();
 const express = require('express');
 const { ExpressAdapter } = require('ask-sdk-express-adapter');
 const Alexa = require('ask-sdk-core');
@@ -176,7 +209,7 @@ app.post('/', adapter.getRequestHandlers());
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK', version: '2.0.0' });
 });
-
+*/
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Servidor ejecutándose en puerto ${PORT}`);
