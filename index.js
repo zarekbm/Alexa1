@@ -2,10 +2,16 @@ const express = require('express');
 const bodyParser = require('body-parser');
 require('dotenv').config();
 
+const { ExpressAdapter } = require('ask-sdk-express-adapter');
+const Alexa = require('ask-sdk-core');
+const axios = require('axios');
+
 const app = express();
 app.use(express.json());
-const app = express();
-app.use(bodyParser.json());
+
+// Configuración
+const APPSCRIPT_URL = process.env.APPSCRIPT_URL;
+
 
 app.post('/', (req, res) => {
   const requestType = req.body.request.type;
