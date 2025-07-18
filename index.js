@@ -88,14 +88,6 @@ const INTENT_HANDLERS = {
   }
 };
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Servidor escuchando en puerto ${PORT}`);
-});
-
-
-/*
-
 // Handler principal
 const GestionInventarioHandler = {
   canHandle(handlerInput) {
@@ -190,6 +182,16 @@ const CancelAndStopIntentHandler = {
       .getResponse();
   }
 };
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Servidor escuchando en puerto ${PORT}`);
+});
+
+
+/*
+
+
 
 // Configuración del skill sin DynamoDB
 const skillBuilder = Alexa.SkillBuilders.custom()
