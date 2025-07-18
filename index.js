@@ -39,18 +39,6 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Servidor escuchando en puerto ${PORT}`);
 });
-/*
-  require('dotenv').config();
-const express = require('express');
-const { ExpressAdapter } = require('ask-sdk-express-adapter');
-const Alexa = require('ask-sdk-core');
-const axios = require('axios');
-
-const app = express();
-app.use(express.json());
-
-// Configuración
-const APPSCRIPT_URL = process.env.APPSCRIPT_URL;
 
 // Mapeo de intents a acciones
 const INTENT_HANDLERS = {
@@ -104,6 +92,7 @@ const INTENT_HANDLERS = {
     action: 'registrar_toma'
   }
 };
+/*
 
 // Handler principal
 const GestionInventarioHandler = {
