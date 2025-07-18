@@ -183,6 +183,10 @@ const CancelAndStopIntentHandler = {
   }
 };
 
+const adapter = new ExpressAdapter(skillBuilder.create(), false, false);
+
+app.post('/', adapter.getRequestHandlers());
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Servidor escuchando en puerto ${PORT}`);
