@@ -209,8 +209,9 @@ app.post('/', adapter.getRequestHandlers());
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK', version: '2.0.0' });
 });
-*/
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Servidor ejecutándose en puerto ${PORT}`);
 });
+*/
