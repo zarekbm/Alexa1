@@ -6,41 +6,44 @@ const axios = require('axios');
 
 const app = express();
 
-// Configuración esencial para Alexa
-app.use(express.json()); // Para parsear application/json
-app.use(express.urlencoded({ extended: true })); // Para parsear application/x-www-form-urlencoded
-
-// Middleware para verificar el método POST
-app.use((req, res, next) => {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ 
-      error: 'Método no permitido',
-      message: 'Alexa solo utiliza solicitudes POST'
-    });
-  }
-  next();
-});
+// Configuración de middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Configuración
 const APPSCRIPT_URL = process.env.APPSCRIPT_URL;
 
-// Mapeo de intents a acciones (igual que antes)
-const INTENT_HANDLERS = { /* ... */ };
+// Headers para respuestas de Alexa
+const ALEXA_HEADERS = {
+  'Content-Type': 'application/json;charset=UTF-8',
+  'Cache-Control': 'no-cache, no-store, must-revalidate',
+  'Pragma': 'no-cache'
+};
 
-// Handlers de Alexa (igual que antes)
-const GestionInventarioHandler = { /* ... */ };
-const LaunchRequestHandler = { /* ... */ };
-const HelpIntentHandler = { /* ... */ };
-const CancelAndStopIntentHandler = { /* ... */ };
-const ErrorHandler = { /* ... */ };
+// Manejador para SessionEndedRequest
+const SessionEndedRequestHandler = {
+  canHandle(handlerInput) {
+    return Alexa.getRequestType(handlerInput.requestEnvelope) === 'SessionEndedRequest';
+  },
+  handle(handlerInput) {
+    const { reason } = handlerInput.requestEnvelope.request;
+    console.log(`Sesión terminada por: ${reason}`);
+    
+    // Lógica de limpieza si es necesaria
+    return handlerInput.responseBuilder.getResponse();
+  }
+};
 
-// Configuración del skill
+// [Aquí irían los demás handlers que ya tenías...]
+
+// Configuración del skill con el nuevo handler
 const skillBuilder = Alexa.SkillBuilders.custom()
   .addRequestHandlers(
     LaunchRequestHandler,
     GestionInventarioHandler,
     HelpIntentHandler,
-    CancelAndStopIntentHandler
+    CancelAndStopIntentHandler,
+    SessionEndedRequestHandler // Añadido el nuevo handler
   )
   .addErrorHandlers(ErrorHandler)
   .withApiClient(new Alexa.DefaultApiClient());
@@ -48,24 +51,16 @@ const skillBuilder = Alexa.SkillBuilders.custom()
 const skill = skillBuilder.create();
 const adapter = new ExpressAdapter(skill, false, false);
 
-// HEADER para respuestas JSON
-const ALEXA_HEADERS = {
-  'Content-Type': 'application/json;charset=UTF-8',
-  'Cache-Control': 'no-cache, no-store, must-revalidate',
-  'Pragma': 'no-cache',
-  'Expires': '0'
-};
-
-// Endpoint principal para Alexa (POST)
+// Endpoint principal para Alexa
 app.post('/', (req, res) => {
-  // Verificación adicional del cuerpo de la solicitud
+  // Verificación básica del cuerpo de la solicitud
   if (!req.body || !req.body.request) {
     return res.status(400).set(ALEXA_HEADERS).json({
       version: "1.0",
       response: {
         outputSpeech: {
           type: "PlainText",
-          text: "Error en la solicitud: cuerpo inválido"
+          text: "Solicitud inválida"
         },
         shouldEndSession: true
       }
@@ -89,68 +84,17 @@ app.post('/', (req, res) => {
     });
 });
 
-// Endpoint alternativo para pruebas directas (POST)
-app.post('/direct', (req, res) => {
-  const requestType = req.body.request?.type;
-  
-  if (requestType === 'LaunchRequest') {
-    return res.set(ALEXA_HEADERS).json({
-      version: "1.0",
-      response: {
-        outputSpeech: {
-          type: "PlainText",
-          text: "Bienvenido a Mi Botiquín. ¿Qué necesitas?"
-        },
-        shouldEndSession: false
-      }
-    });
-  }
-
-  res.status(400).set(ALEXA_HEADERS).json({ 
-    error: "Solicitud no soportada",
-    message: "Este endpoint solo soporta LaunchRequest" 
-  });
-});
-
-// Health check endpoint (GET permitido solo aquí)
-app.get('/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'OK', 
-    version: '2.1.0',
-    endpoints: {
-      alexa: { path: '/', methods: ['POST'] },
-      direct: { path: '/direct', methods: ['POST'] },
-      health: { path: '/health', methods: ['GET'] }
-    },
-    alexa_configured: !!APPSCRIPT_URL
-  });
-});
-
-// Manejo de métodos no permitidos
-app.all('*', (req, res) => {
-  if (req.method !== 'POST') {
-    return res.status(405).set('Allow', 'POST').json({
-      error: 'Método no permitido',
-      allowedMethods: ['POST']
-    });
-  }
-  res.status(404).json({ error: 'Endpoint no encontrado' });
-});
+// [Resto de tu configuración del servidor...]
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Servidor proxy ejecutándose en puerto ${PORT}`);
-  console.log(`Endpoint principal: POST http://localhost:${PORT}/`);
-  console.log(`AppScript URL: ${APPSCRIPT_URL || 'No configurada - establece APPSCRIPT_URL en .env'}`);
+  console.log(`Servidor ejecutándose en puerto ${PORT}`);
+  console.log(`AppScript URL: ${APPSCRIPT_URL || 'No configurada'}`);
 });
 
 /* const express = require('express');
 const bodyParser = require('body-parser');
 require('dotenv').config();
-
-const { ExpressAdapter } = require('ask-sdk-express-adapter');
-const Alexa = require('ask-sdk-core');
-const axios = require('axios');
 
 const app = express();
 app.use(express.json());
