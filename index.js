@@ -10,59 +10,9 @@ const app = express();
 app.use(express.json());
 
 // Configuración
-const APPSCRIPT_URL = process.env.APPSCRIPT_URL;
+//const APPSCRIPT_URL = process.env.APPSCRIPT_URL;
 
-const INTENT_HANDLERS = {
-  'CapturarMedicamento': {
-    prompt: '¿Qué medicamento deseas agregar?',
-    nextIntent: 'CapturarNombreMedicamento'
-  },
-  'CapturarNombreMedicamento': {
-    param: 'nombre',
-    prompt: '¿Cuántas unidades ingresas?',
-    nextIntent: 'CapturarCantidadMedicamento'
-  },
-  'CapturarCantidadMedicamento': {
-    param: 'cantidad',
-    prompt: '¿Cuál será la cantidad mínima para alertas?',
-    nextIntent: 'CapturarCantidadMinima'
-  },
-  'CapturarCantidadMinima': {
-    param: 'cantidadMinima',
-    prompt: '¿Cuál es la fecha de vencimiento? (ejemplo: 2024-12-31)',
-    nextIntent: 'CapturarVencimiento'
-  },
-  'CapturarVencimiento': {
-    param: 'vencimiento',
-    action: 'agregar_medicamento'
-  },
-  'IniciarActualizarStock': {
-    prompt: '¿Qué medicamento deseas actualizar?',
-    nextIntent: 'CapturarMedicamentoActualizar'
-  },
-  'CapturarMedicamentoActualizar': {
-    param: 'medicamento',
-    prompt: '¿A qué cantidad deseas actualizar?',
-    nextIntent: 'CapturarNuevaCantidad'
-  },
-  'CapturarNuevaCantidad': {
-    param: 'cantidad',
-    action: 'actualizar_stock'
-  },
-  'IniciarRegistrarToma': {
-    prompt: '¿Qué medicamento tomaste?',
-    nextIntent: 'CapturarMedicamentoToma'
-  },
-  'CapturarMedicamentoToma': {
-    param: 'medicamento',
-    prompt: '¿Cuántas unidades tomaste?',
-    nextIntent: 'ConfirmarCantidadToma'
-  },
-  'ConfirmarCantidadToma': {
-    param: 'cantidad',
-    action: 'registrar_toma'
-  }
-};
+
 
 app.post('/', (req, res) => {
   const requestType = req.body.request.type;
@@ -82,64 +32,21 @@ app.post('/', (req, res) => {
     return res.json(response);
   }
 
+ 
+
+  
+  }
+
   // Manejar otros tipos de solicitud
+  
   res.status(400).json({ error: "Solicitud no soportada" });
+
 });
 
 // Mapeo de intents a acciones
 
-// Handler principal
-const GestionInventarioHandler = {
-  canHandle(handlerInput) {
-    return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest' 
-      && Object.keys(INTENT_HANDLERS).includes(Alexa.getIntentName(handlerInput.requestEnvelope));
-  },
-  async handle(handlerInput) {
-    const intentName = Alexa.getIntentName(handlerInput.requestEnvelope);
-    const { intent } = handlerInput.requestEnvelope.request;
-    const sessionAttributes = handlerInput.attributesManager.getSessionAttributes();
-    const handlerConfig = INTENT_HANDLERS[intentName];
 
-    // Almacenar dato si corresponde
-    if (handlerConfig.param && intent.slots[handlerConfig.param]?.value) {
-      sessionAttributes[handlerConfig.param] = intent.slots[handlerConfig.param].value;
-    }
 
-    // Si es acción final, llamar a AppScript
-    if (handlerConfig.action) {
-      const payload = {
-        action: handlerConfig.action,
-        ...sessionAttributes
-      };
-      
-      try {
-        const result = await callAppScript(payload);
-        handlerInput.attributesManager.setSessionAttributes({});
-        return handlerInput.responseBuilder
-          .speak(result.message)
-          .getResponse();
-      } catch (error) {
-        return handlerInput.responseBuilder
-          .speak('Ocurrió un error al procesar tu solicitud')
-          .getResponse();
-      }
-    }
-
-    // Continuar con el siguiente paso
-    return handlerInput.responseBuilder
-      .speak(handlerConfig.prompt)
-      .reprompt(handlerConfig.prompt)
-      .getResponse();
-  }
-};
-
-// Función para llamar a Google Apps Script
-async function callAppScript(payload) {
-  const response = await axios.post(APPSCRIPT_URL, payload, {
-    headers: { 'Content-Type': 'application/json' }
-  });
-  return response.data;
-}
 /*
 // Handlers básicos de Alexa
 const LaunchRequestHandler = {
